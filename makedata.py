@@ -2,13 +2,18 @@
 
 import random
 
-with open("data.txt", "w") as f:
+with open("varosok.txt", "r") as f:
+    cities = [line.split(' ')[0] for line in f.readlines()]
+
+with open("hazak.txt", "w") as f:
     for _ in range(10000):
         data = []
+        # city
+        data.append(random.choices(cities)[0])
         # m^2
         data.append(random.randint(50, 1000))
         # price
-        data.append(data[0] * random.randint(70000, 900000))
+        data.append(data[1] * random.randint(70000, 900000))
         # rooms
         data.append(random.randint(1, 3)) # paperwork price
 
