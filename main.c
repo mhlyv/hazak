@@ -197,7 +197,7 @@ config_valtoztat(Config *config)
 }
 
 Haz *
-haz(char *words[6])
+haz(char *words[7])
 {
     Haz *haz = malloc(sizeof(Haz));
 
@@ -264,7 +264,7 @@ hazak_olvas(Megye *megye, Config *config)
     Varos *varos;
     Haz *uj;
     char *line;
-    char *words[6];
+    char *words[7];
     int found;
 
     if (!(fajl = fopen("hazak.txt", "r"))) {
@@ -281,6 +281,7 @@ hazak_olvas(Megye *megye, Config *config)
         words[3] = strtok(NULL, "\n ");
         words[4] = strtok(NULL, "\n ");
         words[5] = strtok(NULL, "\n ");
+        words[6] = strtok(NULL, "\n ");
         while (strtok(NULL, " ")) {}
 
         uj = haz(words);
