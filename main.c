@@ -390,7 +390,9 @@ uj_varos(Megye *megye, char *nev)
     megye->varos   = uj;
     uj->haz        = NULL;
     uj->nev        = malloc(strlen(nev)+1);
-    strcpy(uj->nev, nev);
+    if (nev) {
+        strcpy(uj->nev, nev);
+    }
 
     return megye;
 }
