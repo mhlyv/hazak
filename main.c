@@ -9,7 +9,9 @@ typedef struct Megye Megye;
 
 static Config * config_valtoztat(Config *);
 static Haz * haz(char *[6]);
-static int validhaz(Haz *, Config *);
+static int validhaz(Haz *, Megye *, Config *);
+static int varos_letezik(Megye *, char *);
+static int megyeben_haz(Megye *);
 static Megye * hazak_olvas(Megye *, Config *);
 static Megye * varosok_olvas();
 static Varos * uj_haz(Varos *, Haz *);
@@ -19,6 +21,7 @@ static void print_config(Config *);
 static void print_hazak(Haz *);
 static void print_varosok(Varos *);
 static void print_megyek(Megye *);
+static void print_talalatok(Megye *);
 
 struct Config {
     char * megye;
@@ -230,30 +233,68 @@ haz(char *words[7])
 }
 
 int
-validhaz(Haz *haz, Config *config)
+validhaz(Haz *haz, Megye *head, Config *config)
 {
+    Megye *megye = head;
+    int valid = 1;
+
     if ((config->meret[0] && haz->meret < config->meret[0]) || 
         (config->meret[1] && haz->meret > config->meret[1])) {
-        return 0;
+        valid = 0;
     }
     if ((config->ar[0] && haz->ar < config->ar[0]) || 
         (config->ar[1] && haz->ar > config->ar[1])) {
-        return 0;
+        valid = 0;
     }
     if ((config->szobak[0] && haz->szobak < config->szobak[0]) || 
         (config->szobak[1] && haz->szobak > config->szobak[1])) {
-        return 0;
+        valid = 0;
     }
-    if (!config->extraszoba) {
-        if (haz->extraszoba != config->extraszoba) return 0;
+    if (config->extraszoba) {
+        if (haz->extraszoba != config->extraszoba)  {
+            valid = 0;
+        }
     }
-    if (!config->garazs) {
-        if (haz->garazs != config->garazs) return 0;
+    if (config->garazs) {
+        if (haz->garazs != config->garazs)  {
+            valid = 0;
+        }
     }
-    if (!config->sufni) {
-        if (haz->sufni != config->sufni) return 0;
+    if (config->sufni) {
+        if (haz->sufni != config->sufni)  {
+            valid = 0;
+        }
     }
-    return 1;
+
+    return valid;
+}
+
+int
+varos_letezik(Megye *megye, char *nev)
+{
+    Varos *varos = megye->varos;
+    while (varos) {
+        if (!strcmp(varos->nev, nev)) {
+            return 1;
+        }
+        varos = varos->next;
+    }
+    return 0;
+}
+
+int
+megyeben_haz(Megye *megye)
+{
+    Varos *varos = megye->varos;
+
+    while (varos) {
+        if (varos->haz) {
+            return 1;
+        }
+        varos = varos->next;
+    }
+
+    return 0;
 }
 
 Megye *
@@ -286,11 +327,11 @@ hazak_olvas(Megye *megye, Config *config)
 
         uj = haz(words);
 
-        //if (!validhaz(uj, config)) {
-        //    continue;
-        //}
-
         temp = megye;
+        if (!validhaz(uj, temp, config)) {
+            continue;
+        }
+
         //ugorjuk at a megyét ahol nincs város
         while (temp && !temp->varos) {
             temp = temp->next;
@@ -352,7 +393,10 @@ varosok_olvas()
         while (temp) {
             if (!strcmp(temp->nev, words[1])) {
                 megye_letezik = 1;
-                temp = uj_varos(temp, words[0]);
+                //ha a város már létezik, ne hozzuk létre még1szer
+                if (!varos_letezik(temp, words[0])) {
+                    temp = uj_varos(temp, words[0]);
+                }
             }
             temp = temp->next;
         }
@@ -443,7 +487,10 @@ print_varosok(Varos *head)
 {
     Varos *varos = head;
     while (varos) {
-        printf("%s\n", varos->nev);
+        //csak akkor írja ki ha van ott ház
+        if (varos->haz) {
+            printf("%s\n", varos->nev);
+        }
         varos = varos->next;
     }
 }
@@ -453,9 +500,57 @@ print_megyek(Megye *head)
 {
     Megye *megye = head;
     while (megye) {
-        printf("%s\n", megye->nev);
+        //csak akkor írja ki ha van ott ház
+        if (megyeben_haz(megye)) {
+            printf("%s\n", megye->nev);
+        }
         megye = megye->next;
     }
+}
+
+void
+print_talalatok(Megye *head)
+{
+    Megye *megye = head;
+    Varos *varos;
+    char input[64];
+
+    print_megyek(megye);
+
+    printf("\nAdjon meg egy megyét\n");
+    if (!scanf("%s", input)) {
+        printf("Nem sikerült beolvasni\n");
+    }
+
+    megye = head;
+    while (megye && strcmp(megye->nev, input)) {
+        megye = megye->next;
+    }
+
+    if (!megyeben_haz(megye)) {
+        printf("Ebben a megyében nincs ház!\n");
+        return;
+    }
+
+    varos = megye->varos;
+    print_varosok(varos);
+
+    printf("\nAdjon meg egy varost\n");
+    if (!scanf("%s", input)) {
+        printf("Nem sikerült beolvasni\n");
+    }
+
+    varos = megye->varos;
+    while (varos && strcmp(varos->nev, input)) {
+        varos = varos->next;
+    }
+
+    if (!varos) {
+        printf("Ebben a városban nincs ház!\n");
+        return;
+    }
+
+    print_hazak(varos->haz);
 }
 
 int
@@ -463,22 +558,8 @@ main()
 {
     printf(uzenetek[udvozles]);
     Megye * elso_megye = varosok_olvas();
-    //printf(elso_megye->nev);
-    //print_varosok(elso_megye->varos);
     Config * config = config_valtoztat(NULL);
     elso_megye = hazak_olvas(elso_megye, config);
-    print_megyek(elso_megye);
-    printf("\n");
-    print_varosok(elso_megye->varos);
-    printf("\n");
-    print_hazak(elso_megye->varos->next->haz);
-    printf("\n");
-    //TODO:
-    //  sorzámozva kiírni a megyéket ahol vannak há
-    //  bekérni egy megye nevét
-    //  kiírni a megyéből azokat a városokat ahol van ház
-    //  bekérni egy város nevét
-    //  kiírni a városban lévő házakat
-    //  kilep
+    print_talalatok(elso_megye);
     return 0;
 }
