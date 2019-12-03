@@ -21,7 +21,7 @@ static void print_config(Config *);
 static void print_hazak(Haz *);
 static void print_varosok(Varos *);
 static void print_megyek(Megye *);
-static void print_talalatok(Megye *);
+static void print_talalatok(Megye *, Config *);
 
 struct Config {
     char * megye;
@@ -41,6 +41,7 @@ struct Config {
 
 struct Haz {
     Haz *next;
+    char *varos;
     int meret;
     int ar;
     int szobak;
@@ -120,55 +121,59 @@ config_valtoztat(Config *config)
     while (!done) {
         printf("> ");
         if (!scanf("%s", input)) {
-            printf("Nem sikerült olvasni!");
+            printf("Nem sikerült olvasni!\n");
         }
 
         if (!strcmp(input, "megye")) {
             printf(uzenetek[megye]);
-            if (!scanf("%s", config->megye)) {
-
+            config->megye = malloc(64);
+            if (!scanf("%62s", config->megye)) {
+                printf("Nem sikerült olvasni!\n");
+                free(config->megye);
             }
             print_config(config);
         } else if (!strcmp(input, "varos")) {
             printf(uzenetek[varos]);
-            if (!scanf("%s", config->varos)) {
-            
+            config->varos = malloc(64);
+            if (!scanf("%62s", config->varos)) {
+                printf("Nem sikerült olvasni!\n");
+                free(config->varos);
             }
             print_config(config);
         } else if (!strcmp(input, "meret")) {
             printf(uzenetek[minmax]);
             if (!scanf("%d %d", &config->meret[0], &config->meret[1])) {
-            
+                printf("Nem sikerült olvasni!\n");
             }
             print_config(config);
         } else if (!strcmp(input, "ar")) {
             printf(uzenetek[minmax]);
             if (!scanf("%d %d", &config->ar[0], &config->ar[1])) {
-
+                printf("Nem sikerült olvasni!\n");
             }
             print_config(config);
         } else if (!strcmp(input, "szobak")) {
             printf(uzenetek[minmax]);
             if (!scanf("%d %d", &config->szobak[0], &config->szobak[1])) {
-            
+                printf("Nem sikerült olvasni!\n");
             }
             print_config(config);
         } else if (!strcmp(input, "extraszoba")) {
             printf(uzenetek[opcionalis]);
             if (!scanf("%d", &config->extraszoba)) {
-
+                printf("Nem sikerült olvasni!\n");
             }
             print_config(config);
         } else if (!strcmp(input, "garazs")) {
             printf(uzenetek[opcionalis]);
             if (!scanf("%d", &config->garazs)) {
-
+                printf("Nem sikerült olvasni!\n");
             }
             print_config(config);
         } else if (!strcmp(input, "sufni")) {
             printf(uzenetek[opcionalis]);
             if (!scanf("%d", &config->sufni)) {
-
+                printf("Nem sikerült olvasni!\n");
             }
             print_config(config);
         } else if (!strcmp(input, "vissza")) {
@@ -210,6 +215,7 @@ haz(char *words[7])
     }
 
     haz->next       = NULL;
+    haz->varos      = words[0];
     haz->meret      = atoi(words[1]);
     haz->ar         = atoi(words[2]);
     haz->szobak     = atoi(words[3]);
@@ -235,7 +241,7 @@ haz(char *words[7])
 int
 validhaz(Haz *haz, Megye *head, Config *config)
 {
-    Megye *megye = head;
+    Megye *megye;
     int valid = 1;
 
     if ((config->meret[0] && haz->meret < config->meret[0]) || 
@@ -265,6 +271,17 @@ validhaz(Haz *haz, Megye *head, Config *config)
             valid = 0;
         }
     }
+    if (config->varos && strcmp(haz->varos, config->varos)) {
+        valid = 0;
+    }
+    if (config->megye) {
+        megye = head;
+        while (megye && strcmp(megye->nev, config->megye)) {
+            megye = megye->next;
+        }
+
+        valid = varos_letezik(megye, haz->varos);
+    }
 
     return valid;
 }
@@ -272,6 +289,7 @@ validhaz(Haz *haz, Megye *head, Config *config)
 int
 varos_letezik(Megye *megye, char *nev)
 {
+    if (!megye) return 0;
     Varos *varos = megye->varos;
     while (varos) {
         if (!strcmp(varos->nev, nev)) {
@@ -285,6 +303,7 @@ varos_letezik(Megye *megye, char *nev)
 int
 megyeben_haz(Megye *megye)
 {
+    if (!megye) return 0;
     Varos *varos = megye->varos;
 
     while (varos) {
@@ -464,6 +483,8 @@ void
 print_config(Config *config)
 {
     printf("Konfiguráció:\n");
+    printf("\tmegye: '%s'\n", config->megye);
+    printf("\tvaros: '%s'\n", config->varos);
     printf("\t%d < meret < %d\n", config->meret[0], config->meret[1]);
     printf("\t%d < ár < %d\n", config->ar[0], config->ar[1]);
     printf("\t%d < szobak < %d\n", config->szobak[0], config->szobak[1]);
@@ -477,7 +498,7 @@ print_hazak(Haz *head)
 {
     Haz *haz = head;
     while (haz) {
-        printf("Ház ár: %d\n", haz->ar);
+        printf("Ház ár: %d méret: %d, szobák: %d\n", haz->ar, haz->meret, haz->szobak);
         haz = haz->next;
     }
 }
@@ -509,48 +530,90 @@ print_megyek(Megye *head)
 }
 
 void
-print_talalatok(Megye *head)
+print_talalatok(Megye *head, Config *config)
 {
     Megye *megye = head;
     Varos *varos;
     char input[64];
 
-    print_megyek(megye);
+    if (config->megye) {
 
-    printf("\nAdjon meg egy megyét\n");
-    if (!scanf("%s", input)) {
-        printf("Nem sikerült beolvasni\n");
+        while (megye && strcmp(megye->nev, config->megye)) {
+            megye = megye->next;
+        }
+        
+        if (!megyeben_haz(megye)) {
+            printf("Ebben a megyében nincs ház!\n");
+            return;
+        }
+
+        if (config->varos) {
+            varos = megye->varos;
+            while (varos && strcmp(varos->nev, config->varos)) {
+                varos = varos->next;
+            }
+
+            if (!varos) {
+                printf("Ebben a városban nincs ház!\n");
+                return;
+            }
+
+            print_hazak(varos->haz);
+            return;
+        }
+
+    } else if (!config->varos) {
+
+        print_megyek(megye);
+        printf("\nAdjon meg egy megyét\n");
+        if (!scanf("%s", input)) {
+            printf("Nem sikerült beolvasni\n");
+        }
+
+        megye = head;
+        while (megye && strcmp(megye->nev, input)) {
+            megye = megye->next;
+        }
+
+        if (!megyeben_haz(megye)) {
+            printf("Ebben a megyében nincs ház!\n");
+            return;
+        }
     }
 
-    megye = head;
-    while (megye && strcmp(megye->nev, input)) {
-        megye = megye->next;
+    if (config->varos) {
+        megye = head;
+        while (megye) {
+            varos = megye->varos;
+            while (varos) {
+                if (!strcmp(varos->nev, config->varos)) {
+                    print_hazak(varos->haz);
+                }
+                varos = varos->next;
+            }
+            megye = megye->next;
+        }
+    } else {
+        varos = megye->varos;
+        print_varosok(varos);
+
+        printf("\nAdjon meg egy varost\n");
+        if (!scanf("%s", input)) {
+            printf("Nem sikerült beolvasni\n");
+        }
+
+        varos = megye->varos;
+        while (varos && strcmp(varos->nev, input)) {
+            varos = varos->next;
+        }
+
+        if (!varos) {
+            printf("Ebben a városban nincs ház!\n");
+            return;
+        }
+
+        print_hazak(varos->haz);
     }
-
-    if (!megyeben_haz(megye)) {
-        printf("Ebben a megyében nincs ház!\n");
-        return;
-    }
-
-    varos = megye->varos;
-    print_varosok(varos);
-
-    printf("\nAdjon meg egy varost\n");
-    if (!scanf("%s", input)) {
-        printf("Nem sikerült beolvasni\n");
-    }
-
-    varos = megye->varos;
-    while (varos && strcmp(varos->nev, input)) {
-        varos = varos->next;
-    }
-
-    if (!varos) {
-        printf("Ebben a városban nincs ház!\n");
-        return;
-    }
-
-    print_hazak(varos->haz);
 }
 
 int
@@ -560,6 +623,6 @@ main()
     Megye * elso_megye = varosok_olvas();
     Config * config = config_valtoztat(NULL);
     elso_megye = hazak_olvas(elso_megye, config);
-    print_talalatok(elso_megye);
+    print_talalatok(elso_megye, config);
     return 0;
 }
