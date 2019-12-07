@@ -2,6 +2,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Probléma: átlagszámítás túl nagy számokkal
+    * floating point exception
+    * long double túl kicsi
+ * megoldás? olvasás közben számolni
+ * o: regi atlag
+ * i: regi elemszam
+ * n: uj elem
+ * 
+ * uj_atlag = (o + n/i) * i/(i+1);
+ * feltétel: i > 0
+ */
+
 typedef struct Config Config;
 typedef struct Haz Haz;
 typedef struct Varos Varos;
@@ -21,8 +33,7 @@ static Megye * varosok_olvas();
 static Varos * uj_haz(Varos *, Haz *);
 static Megye * uj_varos(Megye *, char *);
 static Megye * uj_megye(Megye *, char *);
-//TODO: implement
-static int atlag(Megye *);
+static long double atlag(Megye *);
 //TODO: implement
 static void rendez(Megye *);
 static void print_config(Config *);
@@ -63,12 +74,16 @@ struct Varos {
     Varos *next;
     char *nev;
     Haz *haz;
+    long double atlag;
+    int hazak;
 };
 
 struct Megye {
     Megye *next;
     char *nev;
     Varos *varos;
+    long double atlag;
+    int hazak;
 };
 
 enum {
@@ -403,6 +418,19 @@ hazak_olvas(Megye *megye, Config *config)
             if (!strcmp(words[0], varos->nev)) {
                 found = 1;
                 varos = uj_haz(varos, uj);
+                
+                //átlagok számolása
+                if (++varos->hazak > 1) {
+                    varos->atlag = (varos->atlag + uj->ar/(varos->hazak-1)) * (varos->hazak-1)/varos->hazak;
+                } else {
+                    varos->atlag = uj->ar;
+                }
+
+                if (++temp->hazak > 1) {
+                    temp->atlag = (temp->atlag + uj->ar/(temp->hazak-1)) * (temp->hazak-1)/temp->hazak;
+                } else {
+                    temp->atlag = uj->ar;
+                }
             }
 
             if (!varos || !(varos = varos->next)) {
@@ -520,6 +548,25 @@ uj_megye(Megye *megye, char *nev)
     return uj;
 }
 
+long double
+atlag(Megye *head)
+{
+    Megye *megye = head;
+    long double ar_atlag = 0.0;
+    int index = 0;
+
+    while (megye) {
+        if (++index > 1) {
+            ar_atlag = (ar_atlag + megye->atlag/(index-1)) * (index-1)/index;
+        } else {
+            ar_atlag = megye->atlag;
+        }
+        megye = megye->next;
+    }
+
+    return ar_atlag;
+}
+
 void
 print_config(Config *config)
 {
@@ -551,7 +598,7 @@ print_varosok(Varos *head)
     while (varos) {
         //csak akkor írja ki ha van ott ház
         if (varos->haz) {
-            printf("%s\n", varos->nev);
+            printf("%s hazak: %d átlag ár: %Lf\n", varos->nev, varos->hazak, varos->atlag);
         }
         varos = varos->next;
     }
@@ -564,7 +611,7 @@ print_megyek(Megye *head)
     while (megye) {
         //csak akkor írja ki ha van ott ház
         if (megyeben_haz(megye)) {
-            printf("%s\n", megye->nev);
+            printf("%s hazak: %d átlag ár: %Lf\n", megye->nev, megye->hazak, megye->atlag);
         }
         megye = megye->next;
     }
@@ -664,6 +711,9 @@ main()
     Megye * elso_megye = varosok_olvas();
     Config * config = config_valtoztat(NULL);
     elso_megye = hazak_olvas(elso_megye, config);
+    long double ar_atlag = atlag(elso_megye);
+    printf("A házak átlagos ára: %Lf\n", ar_atlag);
+
     print_talalatok(elso_megye, config);
     return 0;
 }
