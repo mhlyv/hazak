@@ -7,8 +7,12 @@ typedef struct Haz Haz;
 typedef struct Varos Varos;
 typedef struct Megye Megye;
 
+//TODO: fix bullshit errors in visualC++
+
+static int szoszam(char *);
 static Config * config_valtoztat(Config *);
 static Haz * haz(char *[6]);
+//TODO: clean up
 static int validhaz(Haz *, Megye *, Config *);
 static int varos_letezik(Megye *, char *);
 static int megyeben_haz(Megye *);
@@ -17,10 +21,15 @@ static Megye * varosok_olvas();
 static Varos * uj_haz(Varos *, Haz *);
 static Megye * uj_varos(Megye *, char *);
 static Megye * uj_megye(Megye *, char *);
+//TODO: implement
+static int atlag(Megye *);
+//TODO: implement
+static void rendez(Megye *);
 static void print_config(Config *);
 static void print_hazak(Haz *);
 static void print_varosok(Varos *);
 static void print_megyek(Megye *);
+//TODO: clean up
 static void print_talalatok(Megye *, Config *);
 
 struct Config {
@@ -95,13 +104,35 @@ A 0 érték nem lesz értelmezve\n",
 \t-1 -> nem kell\n",
 };
 
+int
+szoszam(char *line)
+{
+    char buff[strlen(line)];
+    int count = 0;
+    char *tok = "\n ";
+    char *words;
+
+    strcpy(buff, line);
+
+    if ((words = strtok(buff, tok))) {
+        count++;
+    } else {
+        return 0;
+    }
+
+    while (strtok(NULL, tok)) {
+        count++;
+    }
+
+    return count;
+}
+
 Config *
 config_valtoztat(Config *config)
 {
     int done = 0;
     char input[64];
-
-    if (!config) {
+if (!config) {
         Config * uj = malloc(sizeof(Config));
         config = uj;
         config->megye = NULL;
@@ -274,7 +305,7 @@ validhaz(Haz *haz, Megye *head, Config *config)
     if (config->varos && strcmp(haz->varos, config->varos)) {
         valid = 0;
     }
-    if (config->megye) {
+    if (valid && config->megye) {
         megye = head;
         while (megye && strcmp(megye->nev, config->megye)) {
             megye = megye->next;
@@ -335,6 +366,11 @@ hazak_olvas(Megye *megye, Config *config)
     line = malloc(128);
     while (fgets(line, 128, fajl)) {
 
+        if (szoszam(line) != 7) {
+            printf("Hiba a hazak.txt fajlban, egy sor nem 7 szóból áll!\n");
+            exit(1);
+        }
+
         words[0] = strtok(line, "\n ");
         words[1] = strtok(NULL, "\n ");
         words[2] = strtok(NULL, "\n ");
@@ -342,7 +378,7 @@ hazak_olvas(Megye *megye, Config *config)
         words[4] = strtok(NULL, "\n ");
         words[5] = strtok(NULL, "\n ");
         words[6] = strtok(NULL, "\n ");
-        while (strtok(NULL, " ")) {}
+        while (strtok(NULL, "\n ")) {}
 
         uj = haz(words);
 
@@ -400,6 +436,11 @@ varosok_olvas()
 
     line = malloc(64);
     while (fgets(line, 64, fajl)) {
+
+        if (szoszam(line) != 2) {
+            printf("Hiba a varosok.txt fajlban, egy sor nem 2 szóból áll!\n");
+            exit(1);
+        }
         
         words[0] = strtok(line, "\n ");
         words[1] = strtok(NULL, "\n ");
