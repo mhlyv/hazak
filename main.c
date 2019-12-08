@@ -130,7 +130,7 @@ A 0 érték nem lesz értelmezve\n",
 int
 szoszam(char *line)
 {
-    char buff[strlen(line)];
+    char buff[256];
     int count = 0;
     char *tok = "\n ";
     char *words;
@@ -155,7 +155,7 @@ config_valtoztat(Config *config)
 {
     int done = 0;
     char input[64];
-if (!config) {
+    if (!config) {
         Config * uj = malloc(sizeof(Config));
         config = uj;
         config->megye = NULL;
@@ -177,6 +177,7 @@ if (!config) {
         if (!scanf("%s", input)) {
             printf("Nem sikerült olvasni!\n");
         }
+        input[63] = '\0';
 
         if (!strcmp(input, "megye")) {
             printf(uzenetek[megye]);
@@ -235,9 +236,6 @@ if (!config) {
             done = 1;
             print_config(config);
         } else if (!strcmp(input, "ujra")) {
-            free(config);
-            Config * uj = malloc(sizeof(Config));
-            config = uj;
             config->megye = NULL;
             config->varos = NULL;
             config->meret[0] = 0;
@@ -295,7 +293,7 @@ haz(char *words[7])
 int
 validhaz(Haz *haz, Megye *head, Config *config)
 {
-    Megye *megye;
+    Megye *megye = NULL;
     int valid = 1;
 
     if ((config->meret[0] && haz->meret < config->meret[0]) || 
@@ -374,9 +372,9 @@ Megye *
 hazak_olvas(Megye *megye, Config *config)
 {
     FILE *fajl;
-    Megye *temp;
-    Varos *varos;
-    Haz *uj;
+    Megye *temp = NULL;
+    Varos *varos = NULL;
+    Haz *uj = NULL;
     char *line;
     char *words[7];
     int found;
@@ -432,14 +430,14 @@ hazak_olvas(Megye *megye, Config *config)
                 if (varos->hazak == 1) {
                     varos->atlag = uj->ar;
                 } else {
-                    varos->atlag = ((long double)varos->atlag + ((long double)uj->ar / (varos->hazak - 1))) * ((long double)(varos->hazak - 1) / varos->hazak);
+                    varos->atlag = ((long double)varos->atlag + ((long double)uj->ar / ((long double)varos->hazak - 1))) * ((long double)(varos->hazak - 1) / varos->hazak);
                 }
 
                 temp->hazak++;
                 if (temp->hazak == 1) {
                     temp->atlag = uj->ar;
                 } else {
-                    temp->atlag = ((long double)temp->atlag + ((long double)uj->ar / (temp->hazak - 1))) * ((long double)(temp->hazak - 1) / temp->hazak);
+                    temp->atlag = ((long double)temp->atlag + ((long double)uj->ar / ((long double)temp->hazak - 1))) * ((long double)(temp->hazak - 1) / temp->hazak);
                 }
             }
 
@@ -461,9 +459,9 @@ hazak_olvas(Megye *megye, Config *config)
 Megye *
 varosok_olvas()
 {
-    FILE *fajl;
+    FILE *fajl = NULL;
     Megye *megye = NULL;
-    Megye *temp;
+    Megye *temp = NULL;
     char *line;
     char *words[2];
 
@@ -562,7 +560,7 @@ uj_varos(Megye *megye, char *nev)
     megye->varos   = uj;
     uj->haz        = NULL;
     uj->nev        = malloc(strlen(nev)+1);
-    if (nev) {
+    if (nev != NULL) {
         strcpy(uj->nev, nev);
     }
 
@@ -582,7 +580,9 @@ uj_megye(Megye *megye, char *nev)
     uj->next       = megye;
     uj->varos      = NULL;
     uj->nev        = malloc(strlen(nev)+1);
-    strcpy(uj->nev, nev);
+    if (nev != NULL) {
+        strcpy(uj->nev, nev);
+    }
 
     return uj;
 }
@@ -769,6 +769,7 @@ print_talalatok(Megye *head, Config *config)
         }
 
         megye = head;
+        input[63] = '\0';
         while (megye && strcmp(megye->nev, input)) {
             megye = megye->next;
         }
@@ -801,6 +802,7 @@ print_talalatok(Megye *head, Config *config)
         }
 
         varos = megye->varos;
+        input[63] = '\0';
         while (varos && strcmp(varos->nev, input)) {
             varos = varos->next;
         }
