@@ -2,6 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* varosok.txt:
+    * varosnev megyenev
+    * ...
+ * hazak.txt:
+    * varosnev alapterület ár szobák-száma extra-szoba garázs sufni
+    * ...
+
+    * extra-szoba, garázs, sufni:
+        * ha n > 0: külön lehet venni, n == ár
+        * ha n = 0: benne van az árban
+        * ha n < 0: nem elérhető
+ */
+
 /* Probléma: átlagszámítás túl nagy számokkal
     * floating point exception
     * long double túl kicsi
@@ -19,12 +32,9 @@ typedef struct Haz Haz;
 typedef struct Varos Varos;
 typedef struct Megye Megye;
 
-//TODO: fix bullshit errors in visual C++
-
 static int szoszam(char *);
 static Config * config_valtoztat(Config *);
 static Haz * haz(char *[6]);
-//TODO: clean up
 static int validhaz(Haz *, Megye *, Config *);
 static int varos_letezik(Megye *, char *);
 static int megyeben_haz(Megye *);
@@ -33,14 +43,12 @@ static Megye * varosok_olvas();
 static Varos * uj_haz(Varos *, Haz *); //új ház beszúrása, ár alapján növekvő sorrend kialakítása
 static Megye * uj_varos(Megye *, char *);
 static Megye * uj_megye(Megye *, char *);
-static long double atlag(Megye *);
-//TODO: implement
-static void rendez(Megye *);
+static Megye * rendez(Megye *);
+static Varos * rendez_varos(Varos *);
 static void print_config(Config *);
 static void print_hazak(Haz *);
 static void print_varosok(Varos *);
 static void print_megyek(Megye *);
-//TODO: clean up
 static void print_talalatok(Megye *, Config *);
 
 struct Config {
@@ -420,16 +428,18 @@ hazak_olvas(Megye *megye, Config *config)
                 varos = uj_haz(varos, uj);
                 
                 //átlagok számolása
-                if (++varos->hazak > 1) {
-                    varos->atlag = (varos->atlag + uj->ar/(varos->hazak-1)) * (varos->hazak-1)/varos->hazak;
-                } else {
+                varos->hazak++;
+                if (varos->hazak == 1) {
                     varos->atlag = uj->ar;
+                } else {
+                    varos->atlag = ((long double)varos->atlag + ((long double)uj->ar / (varos->hazak - 1))) * ((long double)(varos->hazak - 1) / varos->hazak);
                 }
 
-                if (++temp->hazak > 1) {
-                    temp->atlag = (temp->atlag + uj->ar/(temp->hazak-1)) * (temp->hazak-1)/temp->hazak;
-                } else {
+                temp->hazak++;
+                if (temp->hazak == 1) {
                     temp->atlag = uj->ar;
+                } else {
+                    temp->atlag = ((long double)temp->atlag + ((long double)uj->ar / (temp->hazak - 1))) * ((long double)(temp->hazak - 1) / temp->hazak);
                 }
             }
 
@@ -505,7 +515,6 @@ Varos *
 uj_haz(Varos *varos, Haz *uj)
 {
     Haz *haz = varos->haz;
-    Haz *temp = NULL;
 
     if (!haz) {
         uj->next = varos->haz;
@@ -578,23 +587,94 @@ uj_megye(Megye *megye, char *nev)
     return uj;
 }
 
-long double
-atlag(Megye *head)
+Megye *
+rendez(Megye *head)
 {
-    Megye *megye = head;
-    long double ar_atlag = 0.0;
-    int index = 0;
+    Megye *kiszedett = NULL;
+    Megye *ujlista = NULL;
+    Megye *megye = NULL;
 
-    while (megye) {
-        if (++index > 1) {
-            ar_atlag = (ar_atlag + megye->atlag/(index-1)) * (index-1)/index;
+    while (head) {
+        //elso elem kiszedese
+        kiszedett = head;
+        head = head->next;
+        kiszedett->next = NULL;
+        //megye varosainak rendezése
+        kiszedett->varos = rendez_varos(kiszedett->varos);
+
+        if (!ujlista) {
+            ujlista = kiszedett;
         } else {
-            ar_atlag = megye->atlag;
+            megye = ujlista;
+            
+            while (megye) {
+                if (megye->next) {
+                    if (kiszedett->atlag >= megye->atlag &&
+                        kiszedett->atlag <= megye->next->atlag) {
+                        kiszedett->next = megye->next;
+                        megye->next = kiszedett;
+                        break;
+                    }
+                } else if (kiszedett->atlag >= megye->atlag) {
+                    kiszedett->next = megye->next;
+                    megye->next = kiszedett;
+                    break;
+                } else if (kiszedett->atlag < megye->atlag) {
+                    kiszedett->next = ujlista;
+                    ujlista = kiszedett;
+                    break;
+                }
+
+                megye = megye->next;
+            }
         }
-        megye = megye->next;
     }
 
-    return ar_atlag;
+    return ujlista;
+}
+
+Varos *
+rendez_varos(Varos *head)
+{
+    Varos *kiszedett = NULL;
+    Varos *ujlista = NULL;
+    Varos *varos = NULL;
+
+    while (head) {
+        //elso elem kiszedese
+        kiszedett = head;
+        head = head->next;
+        kiszedett->next = NULL;
+
+        if (!ujlista) {
+            ujlista = kiszedett;
+        } else {
+            varos = ujlista;
+            
+            while (varos) {
+                if (varos->next) {
+                    if (kiszedett->atlag >= varos->atlag &&
+                        kiszedett->atlag <= varos->next->atlag) {
+                        kiszedett->next = varos->next;
+                        varos->next = kiszedett;
+                        break;
+                    }
+                } else if (kiszedett->atlag >= varos->atlag) {
+                    kiszedett->next = varos->next;
+                    varos->next = kiszedett;
+                    break;
+                } else if (kiszedett->atlag < varos->atlag) {
+                    kiszedett->next = ujlista;
+                    ujlista = kiszedett;
+                    break;
+                }
+
+                varos = varos->next;
+            }
+        }
+    }
+
+    return ujlista;
 }
 
 void
@@ -741,9 +821,8 @@ main()
     Megye * elso_megye = varosok_olvas();
     Config * config = config_valtoztat(NULL);
     elso_megye = hazak_olvas(elso_megye, config);
-    long double ar_atlag = atlag(elso_megye);
-    printf("A házak átlagos ára: %Lf\n", ar_atlag);
 
+    elso_megye = rendez(elso_megye);
     print_talalatok(elso_megye, config);
     return 0;
 }
