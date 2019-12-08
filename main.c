@@ -6,11 +6,11 @@
     * floating point exception
     * long double túl kicsi
  * megoldás? olvasás közben számolni
- * o: regi atlag
+ * a: regi atlag
  * i: regi elemszam
  * n: uj elem
  * 
- * uj_atlag = (o + n/i) * i/(i+1);
+ * uj_atlag = (a + n/i) * i/(i+1);
  * feltétel: i > 0
  */
 
@@ -19,7 +19,7 @@ typedef struct Haz Haz;
 typedef struct Varos Varos;
 typedef struct Megye Megye;
 
-//TODO: fix bullshit errors in visualC++
+//TODO: fix bullshit errors in visual C++
 
 static int szoszam(char *);
 static Config * config_valtoztat(Config *);
@@ -30,7 +30,7 @@ static int varos_letezik(Megye *, char *);
 static int megyeben_haz(Megye *);
 static Megye * hazak_olvas(Megye *, Config *);
 static Megye * varosok_olvas();
-static Varos * uj_haz(Varos *, Haz *);
+static Varos * uj_haz(Varos *, Haz *); //új ház beszúrása, ár alapján növekvő sorrend kialakítása
 static Megye * uj_varos(Megye *, char *);
 static Megye * uj_megye(Megye *, char *);
 static long double atlag(Megye *);
@@ -504,8 +504,38 @@ varosok_olvas()
 Varos *
 uj_haz(Varos *varos, Haz *uj)
 {
-    uj->next = varos->haz;
-    varos->haz = uj;
+    Haz *haz = varos->haz;
+    Haz *temp = NULL;
+
+    if (!haz) {
+        uj->next = varos->haz;
+        varos->haz = uj;
+        return varos;
+    }
+
+    while (haz) {
+        if (haz->next) {
+            if (haz->ar <= uj->ar && haz->next->ar >= uj->ar) {
+                uj->next = haz->next;
+                haz->next = uj;
+                return varos;
+            }
+        } else if (haz->ar <= uj->ar) {
+            uj->next = haz->next;
+            haz->next = uj;
+            return varos;
+        } else if (haz->ar > uj->ar) {
+            uj->next = varos->haz;
+            varos->haz = uj;
+            return varos;
+        }
+
+        haz = haz->next;
+    }
+
+
+    printf("Nem sikerült beszúrni a házat!\n");
+    print_hazak(uj);
     return varos;
 }
 
