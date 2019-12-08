@@ -156,8 +156,7 @@ config_valtoztat(Config *config)
     int done = 0;
     char input[64];
     if (!config) {
-        Config * uj = malloc(sizeof(Config));
-        config = uj;
+        config = malloc(sizeof(Config));
         config->megye = NULL;
         config->varos = NULL;
         config->meret[0] = 0;
@@ -430,14 +429,14 @@ hazak_olvas(Megye *megye, Config *config)
                 if (varos->hazak == 1) {
                     varos->atlag = uj->ar;
                 } else {
-                    varos->atlag = ((long double)varos->atlag + ((long double)uj->ar / ((long double)varos->hazak - 1))) * ((long double)(varos->hazak - 1) / varos->hazak);
+                    varos->atlag = ((long double)varos->atlag + ((long double)uj->ar / ((long double)varos->hazak - 1))) * ((long double)((long double)varos->hazak - 1) / varos->hazak);
                 }
 
                 temp->hazak++;
                 if (temp->hazak == 1) {
                     temp->atlag = uj->ar;
                 } else {
-                    temp->atlag = ((long double)temp->atlag + ((long double)uj->ar / ((long double)temp->hazak - 1))) * ((long double)(temp->hazak - 1) / temp->hazak);
+                    temp->atlag = ((long double)temp->atlag + ((long double)uj->ar / ((long double)temp->hazak - 1))) * ((long double)((long double)temp->hazak - 1) / temp->hazak);
                 }
             }
 
