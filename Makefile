@@ -1,5 +1,5 @@
 NAME=haz
-FLAGS=-Wall -Wextra -pedantic
+FLAGS=-Wall -Wextra -Wpedantic -g -ggdb
 
 $(NAME): main.c
 	$(CC) -o $(NAME) $(FLAGS) $<
